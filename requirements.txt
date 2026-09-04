@@ -1,0 +1,9 @@
+pandas
+pyarrow
+PyYAML>=6.0
+tqdm
+tabulate
+logzero
+# Used by s3_syncer.py only
+boto3>=1.26.0
+pandas_market_calendars

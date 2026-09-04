@@ -1,0 +1,55 @@
+# Nifty Rolling Options Ladder with Futures Trend Overlay — backtest config.
+# Values follow nifty_strategy_spec.pdf v1.0; items the spec leaves open are
+# marked so the choice stays visible.
+
+name: nifty_rolling_ladder
+market_segment: nifty
+data_root: "../data"
+start_date: 2025/01/01
+end_date: 2026/04/28
+reports_root: reports
+
+# Used by s3_syncer.py when main.py is run with --sync. The backtest itself
+# reads from data_root and needs none of this.
+s3_bucket: ""                 # bucket holding the market-data archive
+base_data_interval: 1minute   # "tick" also pulls index tick data
+sync_mode: fast               # "fast" skips days already downloaded; "full" checks every file
+
+# NIFTY contract size. Points P&L is unaffected by this; rupee P&L scales
+# directly with it. The whole 2025-01-01 onward window uses 65.
+lot_size_schedule:
+  - [2024/01/01, 25]
+  - [2024/11/20, 65]
+
+execution:
+  decision_time: "15:15"   # rolls and transitions execute here
+  slippage_points: 0.0     # per leg, applied against the trade
+  fill_field: Close
+
+book_a:
+  enabled: true
+  sell_targets: [150, 200, 250]   # A / B / C
+  hedge_target: 100               # nearest expiry only
+  initiation_min_dte: 15            # inclusive: an expiry exactly 15 days out qualifies
+  roll_trigger_dte: 8
+  stop_premium_points: 70         # on sold legs, on the option's own price
+  hedge_stop: false               # spec: no stop on the hedges
+  post_stop_policy: leave_empty   # UNRESOLVED in spec; slot refills at the roll
+  liquidity:
+    strike_step: 50
+    min_bars: 3
+    max_staleness_minutes: 15
+    min_volume: 1
+    min_volume_fraction: 0.02
+    min_open_interest: 0          # OI is absent from much of the archive
+    enforce_monotonic: true
+    premium_tolerance: 15
+
+book_b:
+  enabled: true
+  ema_fast: 10
+  ema_slow: 20
+  higher_high_count: 3
+  contract_roll_day: 15
+  pre_roll_window_days: 3
+  lots_per_transition: 2
