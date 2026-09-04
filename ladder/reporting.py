@@ -21,7 +21,7 @@ def _drawdown(series):
     return float(underwater.min()), underwater.idxmin()
 
 
-def summarise(results, config):
+def summarise(results):
     trades, equity = results["trades"], results["equity"]
     closed = trades[trades["exit_price"].notna()] if not trades.empty else trades
     summary = {}
@@ -94,16 +94,16 @@ def write_reports(results, config):
     for name, frame in results.items():
         if isinstance(frame, pd.DataFrame) and not frame.empty:
             frame.to_csv(out / f"{name}.csv", index=False)
-    summary = summarise(results, config)
+    summary = summarise(results)
     monthly = monthly_table(results["equity"])
     if not monthly.empty:
         monthly.to_csv(out / "monthly.csv")
     with open(out / "summary.json", "w") as handle:
         json.dump(summary, handle, indent=2, default=str)
-    return summary, monthly
+    return summary
 
 
-def print_summary(summary, monthly, results):
+def print_summary(summary, results):
     if not summary:
         print("No results.")
         return

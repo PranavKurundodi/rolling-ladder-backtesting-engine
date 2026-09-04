@@ -36,9 +36,6 @@ class Quote:
     bars: int
     last_print: object
 
-    def describe(self):
-        return f"{self.strike}{self.option_type}@{self.price:.2f}"
-
 
 def _quote(market, day, expiry, strike, option_type, cutoff_time):
     """Reference price for a strike as of `cutoff_time`, with liquidity stats."""

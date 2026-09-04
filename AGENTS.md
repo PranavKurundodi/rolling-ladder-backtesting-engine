@@ -10,7 +10,6 @@ direction only, Book A's stops feeding Book B's triggers.
 python run_backtest.py                       # full backtest over the configured window
 python run_backtest.py --start 2025/06/01 --end 2025/12/31 --name h2
 python audit_data.py                         # data health for the configured window
-python main.py --sync                        # pull missing days from S3, then backtest
 ```
 
 Output goes to `reports/<name>/`: `trades.csv` (one row per leg),
@@ -36,7 +35,6 @@ B's state persists across months.
 | `ladder/engine.py` | Day loop and event ordering. |
 | `ladder/reporting.py` | Trade log, equity curve, summary. |
 | `ladder/validate.py` | Invariant checks, run after every backtest. |
-| `s3_syncer.py` | Optional: downloads missing days from S3. Reads `ladder_config.yaml`; needs `s3_bucket` set. |
 
 ## Book A - the rolling ladder
 

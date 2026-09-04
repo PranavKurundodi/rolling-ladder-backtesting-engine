@@ -37,8 +37,8 @@ def main(argv=None):
     engine = BacktestEngine(config, market).run(progress=not args.quiet)
 
     results = engine.results()
-    summary, monthly = write_reports(results, config)
-    print_summary(summary, monthly, results)
+    summary = write_reports(results, config)
+    print_summary(summary, results)
     report(check(results, config))
     logger.info(f"reports written to {config.report_dir}")
     return 0

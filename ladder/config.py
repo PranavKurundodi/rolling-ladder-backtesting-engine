@@ -50,7 +50,6 @@ class BookAConfig:
     initiation_min_dte: int = 15                  # "nearest expiry more than 15 days out"
     roll_trigger_dte: int = 8                     # roll when A reaches this DTE
     stop_premium_points: float = 70.0             # on sold legs, on the option's own price
-    hedge_stop: bool = False                      # spec: no stop on the hedges
     post_stop_policy: str = "leave_empty"         # slot stays vacant until the roll
     liquidity: LiquidityFilter = field(default_factory=LiquidityFilter)
 
@@ -70,7 +69,6 @@ class BookBConfig:
 class ExecutionConfig:
     decision_time: str = "15:15"    # rolls and transitions execute here
     slippage_points: float = 0.0    # per leg, applied against the trade
-    fill_field: str = "Close"       # bar field used as the fill price
 
 
 @dataclass
@@ -81,11 +79,6 @@ class BacktestConfig:
     start_date: date = date(2024, 1, 1)
     end_date: date = date(2026, 4, 28)
     reports_root: Path = Path("reports")
-    # Read by s3_syncer.S3DataSyncer, not by the backtest itself; they share
-    # this file so the download window and the backtest window cannot drift.
-    base_data_interval: str = "1minute"
-    sync_mode: str = "fast"
-    s3_bucket: str = ""
     # NIFTY contract size changed during the backtest window; P&L in rupees
     # depends on it, P&L in points does not.
     lot_size_schedule: tuple = ((date(2024, 1, 1), 25), (date(2024, 11, 20), 75))

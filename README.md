@@ -2,7 +2,7 @@
 
 A backtest of the strategy specified in `nifty_strategy_spec.pdf` v1.0, run
 against a **local archive of NSE Nifty 1-minute data**. There is no broker
-connection, no database, no live trading and no cloud dependency — the engine
+connection, no database, no network access and no live trading — the engine
 reads parquet files off disk and writes CSV reports.
 
 [AGENTS.md](AGENTS.md) has the implementation detail. This file is the
@@ -216,7 +216,8 @@ pip install -r requirements.txt
 
 **Everything runs on a local parquet archive** — about 6.4 GB covering
 2024-01-01 to 2026-04-28. `ladder_config.yaml` sets `data_root` (default
-`../data`). Nothing is fetched at runtime.
+`../data`). The archive is not in this repository and has to be supplied
+separately; nothing is fetched at runtime.
 
 ```
 {data_root}/contract_index.parquet
@@ -297,18 +298,6 @@ Two habits worth keeping:
   does not exist in this archive.
 - `lot_size_schedule` affects rupee P&L only; points P&L is independent of it.
 
-## Optional: downloading more data
-
-`s3_syncer.py` can pull missing days if you have an S3 archive:
-
-```bash
-python main.py --sync      # download missing days, then backtest
-```
-
-Needs `s3_bucket` set in `ladder_config.yaml` (empty by default — the syncer
-says so rather than failing silently) and AWS credentials via `aws configure`.
-Everything except `--sync` works without AWS.
-
 ## Layout
 
 ```
@@ -326,6 +315,4 @@ ladder/              the engine
 ladder_config.yaml   all parameters
 run_backtest.py      run a backtest
 audit_data.py        data health check
-main.py              entry point, adds --sync
-s3_syncer.py         S3 download (optional)
 ```

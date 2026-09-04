@@ -42,10 +42,6 @@ class Leg:
     exit_slippage: float = 0.0
 
     @property
-    def is_open(self):
-        return self.exit_price is None
-
-    @property
     def is_sold(self):
         return self.quantity < 0
 
@@ -64,12 +60,6 @@ class Leg:
         if reference is None:
             return 0.0
         return (reference - self.entry_price) * self.quantity
-
-    def stop_breached(self, price):
-        """Sold legs stop on the option's own price rising by the stop distance."""
-        if self.stop_price is None or not self.is_sold:
-            return False
-        return price >= self.stop_price
 
     def as_row(self, lot_size):
         gross = self.points()
