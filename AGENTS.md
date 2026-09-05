@@ -39,8 +39,14 @@ B's state persists across months.
 ## Book A - the rolling ladder
 
 Eight legs at all times. Six sold: CE and PE on each of three consecutive
-weekly expiries at target premiums 150 / 200 / 250 (about 15 / 22 / 29 DTE).
-Two bought: CE and PE on the nearest expiry at 100.
+weekly expiries (about 15 / 22 / 29 DTE), targeted separately by side —
+calls at 200 / 240 / 300, puts at 180 / 220 / 260. Two bought on the nearest
+expiry: a call at 120 and a put at 100.
+
+Targets are per option type because skew makes a matched-premium put sit
+further from spot than a matched-premium call, so a single set of targets does
+not produce a symmetric book. `sell_targets` and `hedge_target` accept either a
+per-type mapping or a bare value, which is applied to both sides.
 
 Strikes are chosen by premium, not by distance from spot. Because of skew a
 matched-premium put sits further out than a matched-premium call, so the book
@@ -53,7 +59,8 @@ then B becomes A, C becomes B, D becomes C. However long the book runs, a roll
 opens only two sells and two hedges.
 
 Stops are 70 premium points on each sold leg's own price, checked against that
-leg's own 1-minute bars. Hedges carry no stop. A stopped slot stays vacant
+leg's own 1-minute bars. The distance is fixed rather than proportional, so
+raising the premium targets loosens the stop in relative terms. Hedges carry no stop. A stopped slot stays vacant
 until the roll refills it, which is what returns the book to six sells and two
 buys.
 

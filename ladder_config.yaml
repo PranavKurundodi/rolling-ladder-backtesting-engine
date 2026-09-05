@@ -21,8 +21,15 @@ execution:
 
 book_a:
   enabled: true
-  sell_targets: [150, 200, 250]   # A / B / C
-  hedge_target: 100               # nearest expiry only
+  # Premium targets per option type, A / B / C rungs. Skew means a
+  # matched-premium put sits further from spot than a matched-premium call,
+  # so calls and puts are targeted separately.
+  sell_targets:
+    CE: [200, 240, 300]
+    PE: [180, 220, 260]
+  hedge_target:                   # bought legs, nearest expiry only
+    CE: 120
+    PE: 100
   initiation_min_dte: 15            # inclusive: an expiry exactly 15 days out qualifies
   roll_trigger_dte: 8
   stop_premium_points: 70         # on sold legs, on the option's own price

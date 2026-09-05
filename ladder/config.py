@@ -45,8 +45,14 @@ class LiquidityFilter:
 @dataclass
 class BookAConfig:
     enabled: bool = True
-    sell_targets: tuple = (150.0, 200.0, 250.0)   # A / B / C premium targets
-    hedge_target: float = 100.0                   # bought legs, nearest expiry only
+    # Premium targets per option type.  Calls and puts are priced separately
+    # because skew makes a matched-premium put sit further from spot than a
+    # matched-premium call, so equal targets do not give a symmetric book.
+    sell_targets: dict = field(                   # A / B / C rungs
+        default_factory=lambda: {"CE": (200.0, 240.0, 300.0),
+                                 "PE": (180.0, 220.0, 260.0)})
+    hedge_target: dict = field(                   # bought legs, nearest expiry only
+        default_factory=lambda: {"CE": 120.0, "PE": 100.0})
     initiation_min_dte: int = 15                  # "nearest expiry more than 15 days out"
     roll_trigger_dte: int = 8                     # roll when A reaches this DTE
     stop_premium_points: float = 70.0             # on sold legs, on the option's own price
@@ -98,6 +104,27 @@ class BacktestConfig:
         return Path(self.reports_root) / self.name
 
 
+OPTION_TYPES = ("CE", "PE")
+
+
+def _per_option_type(value, tuple_of_floats=False):
+    """Normalise a target to {"CE": ..., "PE": ...}.
+
+    A bare number or list is taken as the same target for both sides, so a
+    symmetric book can still be written the short way.
+    """
+    if isinstance(value, dict):
+        missing = set(OPTION_TYPES) - set(value)
+        if missing:
+            raise ValueError(f"premium targets missing for {sorted(missing)}")
+        pairs = {k: value[k] for k in OPTION_TYPES}
+    else:
+        pairs = {k: value for k in OPTION_TYPES}
+    if tuple_of_floats:
+        return {k: tuple(float(x) for x in v) for k, v in pairs.items()}
+    return {k: float(v) for k, v in pairs.items()}
+
+
 def _build(cls, payload):
     """Shallow-construct a dataclass from a dict, ignoring unknown keys."""
     if not payload:
@@ -119,7 +146,8 @@ def load_config(path="ladder_config.yaml") -> BacktestConfig:
     liquidity = _build(LiquidityFilter, book_a.pop("liquidity", {}))
     book_a_cfg = _build(BookAConfig, book_a)
     book_a_cfg.liquidity = liquidity
-    book_a_cfg.sell_targets = tuple(float(x) for x in book_a_cfg.sell_targets)
+    book_a_cfg.sell_targets = _per_option_type(book_a_cfg.sell_targets, tuple_of_floats=True)
+    book_a_cfg.hedge_target = _per_option_type(book_a_cfg.hedge_target)
 
     book_b_cfg = _build(BookBConfig, raw.pop("book_b", {}) or {})
     execution_cfg = _build(ExecutionConfig, raw.pop("execution", {}) or {})
@@ -134,6 +162,9 @@ def load_config(path="ladder_config.yaml") -> BacktestConfig:
     if lots:
         cfg.lot_size_schedule = tuple((_as_date(d), int(s)) for d, s in lots)
 
+    rung_counts = {len(v) for v in cfg.book_a.sell_targets.values()}
+    if len(rung_counts) != 1:
+        raise ValueError("book_a.sell_targets: CE and PE must have the same number of rungs")
     if cfg.book_a.post_stop_policy != "leave_empty":
         raise NotImplementedError(
             "post_stop_policy: only 'leave_empty' is implemented. "

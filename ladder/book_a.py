@@ -35,7 +35,10 @@ class RollingOptionsLadder:
 
     def _quote_for(self, day, expiry, option_type, target, spot, cutoff):
         rules = self.settings.liquidity
-        targets = tuple(self.settings.sell_targets) + (self.settings.hedge_target,)
+        # Only this side's targets bound the chain sweep; the other side's are
+        # irrelevant to how far out this chain has to be read.
+        targets = (self.settings.sell_targets[option_type]
+                   + (self.settings.hedge_target[option_type],))
         chain = scan_chain(self.market, day, expiry, option_type, spot,
                            targets, rules, cutoff)
         return pick_by_premium(chain, target, tolerance=rules.premium_tolerance)
@@ -63,13 +66,14 @@ class RollingOptionsLadder:
             self.journal.warn(day, "book_a", "fewer than three expiries beyond the DTE filter")
             return False
         self.expiries = dict(zip(SOLD_ROLES, expiries))
-        for role, target in zip(SOLD_ROLES, self.settings.sell_targets):
+        for rung, role in enumerate(SOLD_ROLES):
             for option_type in OPTION_TYPES:
                 self._open(day, when, self.expiries[role], option_type,
-                           target, spot, role, quantity=-1)
+                           self.settings.sell_targets[option_type][rung],
+                           spot, role, quantity=-1)
         for option_type in OPTION_TYPES:
             self._open(day, when, self.expiries[SOLD_A], option_type,
-                       self.settings.hedge_target, spot, HEDGE, quantity=+1)
+                       self.settings.hedge_target[option_type], spot, HEDGE, quantity=+1)
         self.initiated = True
         self.journal.event(day, when, "book_a", "initiate",
                            f"A={self.expiries[SOLD_A]} B={self.expiries[SOLD_B]} C={self.expiries[SOLD_C]}")
@@ -122,10 +126,11 @@ class RollingOptionsLadder:
         # 3. Sell the new outermost rung and buy hedges on the new front expiry.
         for option_type in OPTION_TYPES:
             self._open(day, when, expiry_d, option_type,
-                       self.settings.sell_targets[-1], spot, SOLD_C, quantity=-1)
+                       self.settings.sell_targets[option_type][-1],
+                       spot, SOLD_C, quantity=-1)
         for option_type in OPTION_TYPES:
             self._open(day, when, self.expiries[SOLD_A], option_type,
-                       self.settings.hedge_target, spot, HEDGE, quantity=+1)
+                       self.settings.hedge_target[option_type], spot, HEDGE, quantity=+1)
 
         # 4. The spec's roll ends with the book back at six sells and two buys,
         #    so any slot vacated by a stop earlier in the week is refilled here.
@@ -136,18 +141,19 @@ class RollingOptionsLadder:
 
     def _refill_vacancies(self, day, when, spot):
         held = {(l.role, l.option_type) for l in self.portfolio.legs(book="A")}
-        for role, target in zip(SOLD_ROLES, self.settings.sell_targets):
+        for rung, role in enumerate(SOLD_ROLES):
             for option_type in OPTION_TYPES:
                 if (role, option_type) not in held:
                     leg = self._open(day, when, self.expiries[role], option_type,
-                                     target, spot, role, quantity=-1)
+                                     self.settings.sell_targets[option_type][rung],
+                                     spot, role, quantity=-1)
                     if leg is not None:
                         self.journal.event(day, when, "book_a", "refill",
                                            f"{role} {leg.symbol} @ {leg.entry_price:.2f}")
         for option_type in OPTION_TYPES:
             if (HEDGE, option_type) not in held:
                 self._open(day, when, self.expiries[SOLD_A], option_type,
-                           self.settings.hedge_target, spot, HEDGE, quantity=+1)
+                           self.settings.hedge_target[option_type], spot, HEDGE, quantity=+1)
 
     # ----------------------------------------------------------------- risk
 

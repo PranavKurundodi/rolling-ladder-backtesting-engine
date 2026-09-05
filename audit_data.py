@@ -62,7 +62,7 @@ def main():
     print("\nEIGHT-LEG FILLABILITY "
           f"(every {SAMPLE_EVERY}th day, at {config.execution.decision_time})")
     cutoff = pd.Timestamp(config.execution.decision_time).time()
-    targets = tuple(a.sell_targets) + (a.hedge_target,)
+    targets = {ot: a.sell_targets[ot] + (a.hedge_target[ot],) for ot in ("CE", "PE")}
     checked = filled = 0
     deviations, failures, chain_depth = [], [], []
     for day in structural[::SAMPLE_EVERY]:
@@ -71,13 +71,13 @@ def main():
         if ref is None or len(ladder) < 3:
             continue
         spot = ref["Close"]
-        legs = [(ladder[i], ot, t) for i, t in enumerate(a.sell_targets)
-                for ot in ("CE", "PE")]
-        legs += [(ladder[0], ot, a.hedge_target) for ot in ("CE", "PE")]
+        legs = [(ladder[rung], ot, a.sell_targets[ot][rung])
+                for rung in range(len(ladder)) for ot in ("CE", "PE")]
+        legs += [(ladder[0], ot, a.hedge_target[ot]) for ot in ("CE", "PE")]
         for expiry, option_type, target in legs:
             checked += 1
             chain = scan_chain(market, day, expiry, option_type, spot,
-                               targets, a.liquidity, cutoff)
+                               targets[option_type], a.liquidity, cutoff)
             chain_depth.append(len(chain))
             quote = pick_by_premium(chain, target, tolerance=a.liquidity.premium_tolerance)
             if quote is None:

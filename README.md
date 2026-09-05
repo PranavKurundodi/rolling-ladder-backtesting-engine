@@ -21,42 +21,46 @@ B's triggers, never the reverse.
 Earns from time decay, close to direction-neutral. **Eight legs at all times,
 six sold and two bought.**
 
-Six sold: a call and a put on each of three consecutive weekly expiries.
+Six sold: a call and a put on each of three consecutive weekly expiries. Calls
+and puts are targeted separately, because skew means a put matching a given
+premium sits further from spot than a call at the same premium.
 
-| Rung | Target premium | Days to expiry |
-| --- | --- | --- |
-| A | ~150 | ~15 |
-| B | ~200 | ~22 |
-| C | ~250 | ~29 |
+| Rung | Sold call | Sold put | Days to expiry |
+| --- | --- | --- | --- |
+| A | ~200 | ~180 | ~15 |
+| B | ~240 | ~220 | ~22 |
+| C | ~300 | ~260 | ~29 |
 
-Two bought: a call and a put on the **nearest expiry only**, at ~100 premium.
-These are the hedges.
+Two bought: a call at ~120 and a put at ~100 on the **nearest expiry only**.
+These are the hedges, and both sit further out than the sold leg on the same
+expiry.
 
-**Strikes are chosen by premium, not by distance from spot.** Because of skew,
-a put matching a given premium sits further from spot than a call at the same
-premium, so the position is structurally wider below the market than above it.
+**Strikes are chosen by premium, not by distance from spot**, so the position
+is structurally wider below the market than above it.
 
 **The three premium targets are one rule at three ages, not three rules.** A
-leg sold at 250 with 29 days to run is worth roughly 200 a week later and 150
+call sold at 300 with 29 days to run is worth roughly 240 a week later and 200
 the week after. Every expiry walks the same staircase:
 
 ```
-sold as D  (~29 DTE, ~250)
-   ->  C   (~22 DTE, ~200)
-   ->  B   (~15 DTE, ~150)   <- hedges bought here
-   ->  A   (  8 DTE      )   <- everything closed
+sold as D  (~29 DTE, ~300 CE / ~260 PE)
+   ->  C   (~22 DTE, ~240 CE / ~220 PE)
+   ->  B   (~15 DTE, ~200 CE / ~180 PE)   <- hedges bought here
+   ->  A   (  8 DTE                    )   <- everything closed
 ```
 
 **The weekly roll**, triggered at 8 days to A's expiry, is three actions taken
 together: close all four A legs; sell a call and a put on D (the expiry after
-C) at ~250; buy a call and a put on B at ~100. Then B becomes A, C becomes B, D
-becomes C, and the book is back to six sells and two buys. Because surviving
+C) at the outermost targets, ~300 and ~260; buy the hedges on B at ~120 and
+~100. Then B becomes A, C becomes B, D becomes C, and the book is back to six
+sells and two buys. Because surviving
 legs are relabelled rather than re-struck, a roll only ever opens two sells and
 two hedges however long the book has run.
 
 **Stops** are 70 premium points on each sold leg, triggered on the option's own
-price rather than the index: sold at 150 exits at 220, sold at 200 at 270, sold
-at 250 at 320. The hedges carry no stop and are held unconditionally from
+price rather than the index: a call sold at 200 exits at 270, one sold at 300
+exits at 370. The stop is a fixed distance, not a fraction of the premium, so
+it is proportionally looser on the outer rungs. The hedges carry no stop and are held unconditionally from
 purchase at ~15 DTE to the roll at 8 DTE. Nothing is held to expiry.
 
 Only the nearest expiry is hedged, so four of the six sold legs are unhedged at
@@ -161,19 +165,19 @@ Window **2025-01-01 to 2026-04-28**, 326 trading days, lot size 65.
 
 | | Points |
 | --- | --- |
-| Book A (ladder), closed legs | +2,404 |
+| Book A (ladder), closed legs | +3,248 |
 | Book B (overlay), closed legs | −4,013 |
-| Open legs marked to market at the end | +127 |
-| **Net** | **−1,482**  (₹−96,359) |
+| Open legs marked to market at the end | +222 |
+| **Net** | **−543**  (₹−35,263) |
 
-Max drawdown −7,117 points (₹−462,618) on 2026-02-26. Sharpe −0.18.
+Max drawdown −6,302 points (₹−409,630) on 2026-02-26. Sharpe −0.06.
 
 Points are per lot and independent of contract size; rupees are points × 65.
 
 **The overlay is where the money goes.** Disabling Book B — set
-`book_b.enabled: false` in the config — gives **+2,870 points (₹186,573),
-Sharpe +1.17, max drawdown −1,428 points**. The overlay converts a profitable,
-well-behaved book into a losing one with five times the drawdown. It sits
+`book_b.enabled: false` in the config — gives **+3,810 points (₹247,670),
+Sharpe +1.43, max drawdown −1,454 points**. The overlay converts a profitable,
+well-behaved book into a losing one with four times the drawdown. It sits
 directional 85% of the time (44% LONG, 41% SHORT, 15% BASE) and is whipsawed.
 Holding BASE throughout, never transitioning, was measured at −711 points over
 the window, so BASE is mildly negative but second-order; the LONG/SHORT
@@ -181,16 +185,16 @@ transitions are the problem.
 
 **Inside Book A**, the economics are the spec working as designed:
 
-- 100 sold legs reached the roll: **+17,232 points**, mean +172 — full premium
+- 97 sold legs reached the roll: **+18,622 points**, mean +192 — full premium
   captured as they decay
-- 158 sold legs stopped out: **−13,573 points**, mean −86
-- Hedges: −1,255 over 138 legs, but mean −6 with occasional payoffs above +500
-  — the tail is truncated, not removed
+- 164 sold legs stopped out: **−14,058 points**, mean −86
+- Hedges: −1,315 over 138 legs, but with occasional payoffs above +500 — the
+  tail is truncated, not removed
 
-**The 70-point stop is tight.** It fires on 61% of sold legs. A leg sold at 150
-stops on roughly a 0.7% index move, which Nifty makes often, and because the
-three rungs on one side share direction they stop together. The book holds all
-six sold legs on only 137 of 326 days, and just three legs on 90 days.
+**The 70-point stop is tight.** It fires on 63% of sold legs. A call sold at
+200 stops on roughly a 0.9% index move, which Nifty makes often, and because
+the three rungs on one side share direction they stop together, so the book
+frequently runs below its full six sold legs.
 
 ### Read these as hypotheses, not verdicts
 
@@ -291,6 +295,9 @@ Two habits worth keeping:
 - Fills are bar closes. `execution.slippage_points` charges a spread against
   the trade on both entry and exit; it defaults to **zero**, so the headline
   results are before transaction costs.
+- Premium targets and the stop distance are independent settings. Raising the
+  targets without raising `stop_premium_points` loosens the stop in
+  proportional terms, which is a real change to the strategy's risk.
 - `naked_short_lots` in `equity.csv` is an exposure proxy, **not SPAN margin** —
   real margin needs the exchange's risk arrays. The spec asks for peak margin
   at LONG and SHORT; this is the closest the data supports.
